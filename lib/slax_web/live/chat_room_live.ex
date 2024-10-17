@@ -1,7 +1,7 @@
 defmodule SlaxWeb.ChatRoomLive do
   use SlaxWeb, :live_view
   alias Slax.Chat
-  alias Slax.Chat.Room
+  alias Slax.Chat.{Message, Room}
 
   def render(assigns) do
     # IO.puts("rendering")
@@ -24,7 +24,6 @@ defmodule SlaxWeb.ChatRoomLive do
         </div>
       </div>
     </div>
-    <%!-- <div>Welcome To Chat</div> --%>
     <div class="flex flex-col flex-grow shadow-lg">
       <div class="flex justify-between items-center flex-shrink-0 h-16 bg-white border-b border-slate-300 px-4">
         <div class="flex flex-col gap-1.5">
@@ -88,6 +87,10 @@ defmodule SlaxWeb.ChatRoomLive do
           <% end %>
         </ul>
       </div>
+
+      <div class="flex flex-col flex-grow overflow-auto">
+        <.message :for={message <- @messages} message={message} />
+      </div>
     </div>
     """
   end
@@ -113,6 +116,24 @@ defmodule SlaxWeb.ChatRoomLive do
     """
   end
 
+  attr :message, Message, required: true
+
+  defp message(assigns) do
+    ~H"""
+    <div class="relative flex px-4 py-3">
+      <div class="h-10 w-10 rounded flex-shrink-0 bg-slate-300"></div>
+      <div class="ml-2">
+        <div class="-mt-1">
+          <.link class="text-sm font-semibold hover:underline">
+            <span>User</span>
+          </.link>
+          <p class="text-sm"><%= @message.body %></p>
+        </div>
+      </div>
+    </div>
+    """
+  end
+
   def mount(_params, _session, socket) do
     # rooms = Repo.all(Room)
     rooms = Chat.list_rooms()
@@ -128,11 +149,18 @@ defmodule SlaxWeb.ChatRoomLive do
           Chat.get_room!(id)
 
         :error ->
-          # List.first(socket.assigns.rooms)
           Chat.get_first_room!()
       end
 
-    {:noreply, assign(socket, hide_topic?: false, page_title: "#" <> room.name, room: room)}
+    messages = Chat.list_messages_in_room(room)
+
+    {:noreply,
+     assign(socket,
+       hide_topic?: false,
+       messages: messages,
+       page_title: "#" <> room.name,
+       room: room
+     )}
   end
 
   def handle_event("toggle-topic", _params, socket) do
